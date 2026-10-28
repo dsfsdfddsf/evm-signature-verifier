@@ -48,6 +48,8 @@ contract SignatureVerifierHardeningTest is Test {
 
     /// High-s (malleable) variants of otherwise valid signatures must be rejected.
     function testFuzz_HighS_MalleableVariantRejected(uint256 amount, uint96 tsOffset, uint256 pk) public {
+        // Normalize fuzz input into valid secp256k1 key range [1, n-1] before vm.addr
+        pk = pk % (N_CURVE - 1) + 1;
         address signer = vm.addr(pk);
         uint256 deadline = block.timestamp + uint256(tsOffset);
         (bytes32 digest, ) = _signedAuth(pk, signer, amount, deadline);
@@ -73,6 +75,7 @@ contract SignatureVerifierHardeningTest is Test {
         (bytes32 digest, ) = _signedAuth(signerAKey, signerA, 1 ether, block.timestamp + 1 hours);
         (uint8 v, bytes32 r, ) = vm.sign(signerAKey, digest);
         bytes memory zeroS = abi.encodePacked(r, bytes32(0), v);
+        // s = 0 is a degenerate scalar: rejected explicitly by the contract with InvalidSignatureSValue
         vm.expectRevert(SignatureVerifier.InvalidSignatureSValue.selector);
         verifier.recoverSigner(digest, zeroS);
     }
@@ -93,6 +96,8 @@ contract SignatureVerifierHardeningTest is Test {
 
     /// v outside {27, 28} (i.e. 0 / 1 or 29+) must be rejected before recovery.
     function testFuzz_RevertOnInvalidV(uint256 vFuzz, uint256 pk) public {
+        // Normalize fuzz input into valid secp256k1 key range [1, n-1] before vm.addr
+        pk = pk % (N_CURVE - 1) + 1;
         address signer = vm.addr(pk);
         (bytes32 digest, ) = _signedAuth(pk, signer, 1 ether, block.timestamp + 1 hours);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
@@ -167,6 +172,8 @@ contract SignatureVerifierHardeningTest is Test {
 
     /// Fuzz: any signature valid for nonce N is never valid for nonce N+1.
     function testFuzz_ReplayAcrossNonces(uint256 amount, uint256 pk, uint96 tsOffset) public {
+        // Normalize fuzz input into valid secp256k1 key range [1, n-1] before vm.addr
+        pk = pk % (N_CURVE - 1) + 1;
         address signer = vm.addr(pk);
         uint256 deadline = block.timestamp + uint256(tsOffset);
         (, bytes memory sig) = _signedAuth(pk, signer, amount, deadline);
