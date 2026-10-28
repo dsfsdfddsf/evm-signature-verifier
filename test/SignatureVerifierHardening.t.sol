@@ -184,7 +184,7 @@ contract SignatureVerifierHardeningTest is Test {
         // Only assert revert when the garbage would actually recover to zero;
         // high-s or out-of-range v variants must also revert via their guards.
         try verifier.recoverSigner(junkDigest, garbage) returns (address signer) {
-            assertGt(uint256(signer), 0, "ecrecover address(0) must never be returned");
+            assertNotEq(signer, address(0), "ecrecover address(0) must never be returned");
         } catch (bytes memory err) {
             assertTrue(
                 keccak256(err) == keccak256(abi.encodeWithSelector(SignatureVerifier.InvalidSignatureSValue.selector))
